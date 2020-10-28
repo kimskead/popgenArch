@@ -15,7 +15,7 @@ library(survminer)
 library(dplyr)
 
 #Data from the EPIC cohort 
-setwd("~/Desktop/ARCH Research/ARCH.Paper/Co-authors/to upload 1 /Response/scripts/data/")
+setwd("")
 epicCohort= read.table("./epicCohort.txt")
 
 #Summary Statistics from SFSCode Simulations and EPIC cohort 
