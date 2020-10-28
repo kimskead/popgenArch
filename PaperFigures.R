@@ -26,7 +26,10 @@ stats_sims = read.table("./stats_sims.txt")
 class.m.se = read.table("./classPredictions.txt")
 
 #Predictions on test set (class) and true 
-preds.all = write.table(preds.all, "./testPredictions.txt")
+##file split into two owing to file size 
+preds1 = read.table("./testPredictions1.txt") 
+preds2 = read.table("./testPredictions2.txt") 
+preds.all = rbind(preds1, preds2) 
 all_test <- read.table("./test.txt")
 
 #Files to infer mutation rate 
