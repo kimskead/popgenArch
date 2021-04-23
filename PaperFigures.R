@@ -32,6 +32,9 @@ preds2 = read.table("./testPredictions2.txt")
 preds.all = rbind(preds1, preds2) 
 all_test <- read.table("./test.txt")
 
+#Classifications for novel simulations 
+novelClassifications = read.table("./newSimsData.txt")
+
 #Files to infer mutation rate 
 ##Predictions for a population size of 10,000 (10 predictions per individual)
 mut.rates = read.table("./mutRates.txt")
@@ -112,6 +115,26 @@ supp2B <- ggplot()+geom_boxplot(data = class.m.se, aes(Desc, se, fill = Desc))+s
           theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"), legend.position = "none")+ggtitle("")+
           theme(plot.title = element_text(face = "bold"))+xlab("Predicted Class")+ylab("Standard Error")
 supp2B
+
+#Supplementary Figure 3: Classification performance on novel parameter combinations. 
+cf.novel <- novelClassifications %>%
+  data.frame() %>% 
+  mutate(Prediction_Desc = factor(Pred, levels = c("Positive", "Combination", "Negative", "Neutral"))) %>%
+  mutate(Reference_Desc=factor(True, levels = c("Positive", "Combination", "Negative", "Neutral"))) %>%
+  group_by(Reference_Desc) %>% 
+  mutate(
+    total = totals,
+    frac_fill = freq/totals) %>%
+  ggplot(aes((Prediction_Desc), (Reference_Desc), fill = frac_fill)) + theme_bw()+
+  geom_tile() +
+  geom_text(aes(label = str_c(round(frac_fill * 100, digits = 1), "%", "\n", "n=", freq)), size = 6, colour = "black") +
+  scale_fill_gradient(low = "lightblue", high = "red") +
+  scale_x_discrete(position = "bottom") +
+  #scale_y_discrete(labels = c("Positive", "Combination", "Negative", "Neutral")) +
+  geom_tile(color = "black", fill = "black", alpha = 0)+xlab("Predicted Class")+ylab("True Class")+
+  theme(plot.title = element_text(hjust = 0.5, size =  20), text = element_text(size = 20, family = "Helvetica"))+
+  theme(legend.title=element_blank(), legend.position = "none")+ggtitle("")+theme(plot.title = element_text(face = "bold"))
+cf.novel
 
 #Supplementary Figure 4: Impact of parameters on predictive accuracy. 
 all_test <- cbind(class.all, all_test)
