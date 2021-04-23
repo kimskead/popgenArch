@@ -1,0 +1,17 @@
+"True" "Pred" "freq" "totals"
+"1" "Combination" "Combination" 18790 18861
+"2" "Combination" "Negative" 71 18861
+"3" "Combination" "Neutral" 0 18861
+"4" "Combination" "Positive" 0 18861
+"5" "Negative" "Combination" 45 3996
+"6" "Negative" "Negative" 3222 3996
+"7" "Negative" "Neutral" 722 3996
+"8" "Negative" "Positive" 0 3996
+"9" "Neutral" "Combination" 6 3599
+"10" "Neutral" "Negative" 592 3599
+"11" "Neutral" "Neutral" 2999 3599
+"12" "Neutral" "Positive" 0 3599
+"13" "Positive" "Combination" 100 3785
+"14" "Positive" "Negative" 4 3785
+"15" "Positive" "Neutral" 0 3785
+"16" "Positive" "Positive" 3681 3785
