@@ -6,4 +6,4 @@ All code to generate the figures is described in PaperFigures.R and an example o
 
 Requirements
 
-The script was run in R version 3.6.0. 
+The script was run in R version 4.0.4. 
