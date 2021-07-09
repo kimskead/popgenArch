@@ -13,6 +13,7 @@ library("forestmodel")
 library(survival)
 library(survminer)
 library(dplyr)
+library(stringr)
 
 #Data from the EPIC cohort 
 setwd("")
@@ -27,10 +28,10 @@ class.m.se = read.table("./classPredictions.txt")
 
 #Predictions on test set (class) and true 
 ##file split into two owing to file size 
-preds1 = read.table("./testPredictions1.txt") 
-preds2 = read.table("./testPredictions2.txt") 
+preds1 = read.table("./testPredictions1.txt", header = T) 
+preds2 = read.table("./testPredictions2.txt", header = T) 
 preds.all = rbind(preds1, preds2) 
-all_test <- read.table("./test.txt")
+all_test <- read.table("./testSet.txt")
 
 #Classifications for novel simulations 
 novelClassifications = read.table("./newSimsData.txt")
@@ -44,6 +45,7 @@ mut.rates.all = read.table("./mutRates.all.txt")
 mutPreds_Sims = read.table("./mutPreds_Simulations.txt")
 
 #Supplementary Figure 1: plot the distribution of summary statistics for real data vs simulated data 
+set.seed(3)
 by_mod <-stats_sims %>% group_by(model)
 by_mod = na.exclude(by_mod)
 stats_sims.pca.l <- sample_n(by_mod, 5000)
@@ -66,7 +68,7 @@ embedding$Data[embedding$Data=="simulated_3"] <- "Simulated Combination"
 embedding$Data[embedding$Data=="epic"] <- "Observed"
 embedding$Data = factor(embedding$Data, levels = c("Simulated Neutral", "Simulated Positive","Simulated Negative","Simulated Combination", "Observed"))
 supp1 <-  ggplot(embedding %>% arrange(Data), aes(x=V1, y=V2, color=Data, shape = Data)) +  scale_color_manual(name = "Data Source", values = c("lightskyblue", "seagreen4", "red4", "salmon1", "black"))+
-  geom_point(size=2, shape = 16) + guides(colour = guide_legend(override.aes = list(size=6))) +
+  geom_point(size=1, shape = 16, alpha = 0.7) + guides(colour = guide_legend(override.aes = list(size=6))) +
   xlab("") + ylab("") + ggtitle("") + theme_light(base_size=20) + theme(strip.background = element_blank(),strip.text.x= element_blank(),
                                                                         axis.ticks = element_blank(), panel.border= element_blank())
 supp1
@@ -101,20 +103,22 @@ fig1e <- conf.preds.all %>%
   theme(legend.title=element_blank(), legend.position = "none")+ggtitle("")+theme(plot.title = element_text(face = "bold"))
 fig1e
 
+
 #Standard error asssociated with each class prediction (Supplementary Figure2A)
 supp2A <- ggplot(class.m.se, aes(x=reorder(Sample, Mean), y=Mean, colour = Desc)) +theme_bw()+
-          geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se), colour = "lightblue", width=.8)+
-          geom_point(size = 2, colour = "darkblue")+theme_pubr()+
-          theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"), legend.position = "none")+ggtitle("")+
-          theme(plot.title = element_text(face = "bold"))+xlab("EPIC Sample")+ylab("Probability of Maximum Class")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+
-          theme(axis.text.x=element_blank())+ylim(0,1)
+  geom_errorbar(aes(ymin=Mean-se, ymax=Mean+se), colour = "lightblue", width=.8)+
+  geom_point(size = 2, colour = "darkblue")+theme_pubr()+
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"), legend.position = "none")+ggtitle("")+
+  theme(plot.title = element_text(face = "bold"))+xlab("EPIC Sample")+ylab("Probability of Maximum Class")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  theme(axis.text.x=element_blank())+ylim(0,1)
 supp2A
 
 #Uncertainty associated with each class prediction(Supplementary Figure 2B)
 supp2B <- ggplot()+geom_boxplot(data = class.m.se, aes(Desc, se, fill = Desc))+scale_fill_manual(values = c("orange", "red", "lightblue", "darkgreen"))+theme_pubr()+
-          theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"), legend.position = "none")+ggtitle("")+
-          theme(plot.title = element_text(face = "bold"))+xlab("Predicted Class")+ylab("Standard Error")
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"), legend.position = "none")+ggtitle("")+
+  theme(plot.title = element_text(face = "bold"))+xlab("Predicted Class")+ylab("Standard Error")
 supp2B
+
 
 #Supplementary Figure 3: Classification performance on novel parameter combinations. 
 cf.novel <- novelClassifications %>%
@@ -152,19 +156,20 @@ melted.all_test$variable <- ifelse(melted.all_test$variable=="mutRate", "Mutatio
 melted.all_test$correct <- ifelse(melted.all_test$correct==0, "Incorrect", "Correct")
 
 supp4 <-ggplot() + theme_pubr()+scale_fill_manual(name = "Prediction", values = c("darkgreen", "red"))+ylim(0,1)+
-        geom_bar(data = melted.conf, aes(factor(value), prop, fill = factor(correct)), stat = "identity", position = "dodge", colour = "black")+facet_wrap(~variable, scales = "free")+
-        xlab("")+ylab("Frequency")+theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"))+
-        ggtitle("")+theme(plot.title = element_text(face = "bold"))+ theme(legend.position="bottom")
+  geom_bar(data = melted.all_test, aes(factor(value), prop, fill = factor(correct)), stat = "identity", position = "dodge", colour = "black")+facet_wrap(~variable, scales = "free")+
+  xlab("")+ylab("Frequency")+theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"))+
+  ggtitle("")+theme(plot.title = element_text(face = "bold"))+ theme(legend.position="bottom")
 supp4
 
+
 #Supplementary Figure 5. Impact of cumulative selective effect on accuracy. 
-nonsyn.del <- conf.incorrect[,c(1,2,3:6,18,25)]
+nonsyn.del <- all_test.incorrect[,c(1,2,3:6,18,25)]
 nonsyn.del$EffectiveDel <- nonsyn.del$nbNonSynAllSNPs*nonsyn.del$meanGammaP
 nonsyn.del$correct <- ifelse(nonsyn.del$correct==0, "Incorrect", "Correct")
 supp5 <-  ggplot(data = nonsyn.del, aes(x=factor(meanGammaP), y = EffectiveDel, fill = factor(correct)))+geom_boxplot()+
-          scale_fill_manual(name = "Classification", values = c("darkgreen", "red"))+theme_pubr()+
-          xlab("Negative Selection Coefficient")+ylab("Cumulative Selective Effect")+ggtitle("Impact of Cumulative Selective Effect on Accuracy")+
-          theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 18, family = "Helvetica"))+theme(plot.title = element_text(face = "bold"))+ theme(legend.position="bottom")
+  scale_fill_manual(name = "Classification", values = c("darkgreen", "red"))+theme_pubr()+
+  xlab("Negative Selection Coefficient")+ylab("Cumulative Selective Effect")+ggtitle("Impact of Cumulative Selective Effect on Accuracy")+
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 18, family = "Helvetica"))+theme(plot.title = element_text(face = "bold"))+ theme(legend.position="bottom")
 supp5
 
 #Supplementary Figure 6: Impact of nonsynonymous mutation count on prediction uncertainty 
@@ -174,9 +179,9 @@ epic.uncertain$correct <- ifelse(epic.uncertain$Mean>0.99,1,0)
 epic.uncertain <- epic.uncertain[epic.uncertain$Desc=="Neutral"| epic.uncertain$Desc=="Negative",]
 epic.uncertain <- epic.uncertain[epic.uncertain$nbNonSynAllSNPs<100,] #remove outliers 
 supp6 <-  ggplot(epic.uncertain, aes(x=log10(nbNonSynAllSNPs), y=Mean)) + 
-          geom_point()+ theme_pubr()+ xlim(0, 1.26)+ geom_smooth(method=lm, colour = "Red") + theme(text = element_text(size=16, family = "Helvetica"))+ylim(0.4,1)+
-          theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"), legend.position = "none")+ggtitle("Impact of Nonsynonymous Mutation Count on Softmax Probability")+
-          theme(plot.title = element_text(face = "bold"))+xlab("log10(#Nonsynonymous Mutations)")+ylab("Mean")
+  geom_point()+ theme_pubr()+ xlim(0, 1.26)+ geom_smooth(method=lm, colour = "Red") + theme(text = element_text(size=16, family = "Helvetica"))+ylim(0.4,1)+
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"), legend.position = "none")+ggtitle("Impact of Nonsynonymous Mutation Count on Softmax Probability")+
+  theme(plot.title = element_text(face = "bold"))+xlab("log10(#Nonsynonymous Mutations)")+ylab("Mean")
 supp6
 
 ###Figure 2A: Evolutionary classes in preleukemic and healthy blood populations
@@ -186,11 +191,19 @@ colnames(t) = c("developed_AML", "total")
 ct = join(c,t)
 ct$prop = ct$freq/ct$total
 fig2A <-  ggplot()+theme_pubr()+scale_fill_manual(name = "Group", values = c("blue", "red"))+
-          geom_bar(data = ct, aes(x=Desc, y = prop, fill = developed_AML), stat = "identity", position = "dodge", colour = "black")+
-          geom_text(data = ct, aes(x = Desc, y = prop, label = scales::percent(prop, suffix = ""), group = developed_AML), stat = "identity", vjust = +1.5, position = position_dodge(0.8), colour = "white", size = 4)+
-          theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica"))+ggtitle("")+
-          theme(plot.title = element_text(face = "bold"))+xlab("Evolutionary Class")+ylab("Proportion")+ theme(axis.text.x = element_text(angle = 30, hjust = 1))
+  geom_bar(data = ct, aes(x=Desc, y = prop, fill = developed_AML), stat = "identity", position = "dodge", colour = "black")+
+  geom_text(data = ct, aes(x = Desc, y = prop, label = scales::percent(prop, suffix = ""), group = developed_AML), stat = "identity", vjust = +1.5, position = position_dodge(0.8), colour = "white", size = 4)+
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica"))+ggtitle("")+
+  theme(plot.title = element_text(face = "bold"))+xlab("Evolutionary Class")+ylab("Proportion")+ theme(axis.text.x = element_text(angle = 30, hjust = 1))
 fig2A
+
+
+#Proportion of individuals rejecting neutrality 
+prop.neut <- class.m.se
+prop.neut <- plyr::count(prop.neut, c("developed_AML", "Desc"))
+prop.neut$Desc <- ifelse(prop.neut$Desc=="Neutral", "Neutral", "Other")
+res <- prop.test(x = c(246, 73), n = c(385, 92))
+res 
 
 ###Figure 2b: Age-associations across evolutionary class predictions
 #plot age distribution of fit to different classes 
@@ -208,17 +221,32 @@ colnames(epic_models.e) <- c("age_bins", "developed_AML", "Prediction_Desc")
 epic_models<- merge(epic_models, epic_models.e, by = c("age_bins","developed_AML", "Prediction_Desc"), all =T)
 #Age distributions
 fig2b <-  ggplot()+theme_pubr()+scale_fill_brewer(name = "Age Group", palette="Blues")+
-          geom_bar(data=epic_models, aes(x=Prediction_Desc ,y=prop, fill= factor(age_bins)),colour = "black", stat="identity", position = "dodge")+facet_grid(~developed_AML)+
-          geom_errorbar(data = epic_models, aes(x = Prediction_Desc, ymin = prop-se, ymax = prop + se, group = factor(age_bins)), position = "dodge", width=0.91)+
-          ylab("Proportion of Participants")+xlab("Evolutionary Class")+ggtitle("")+theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica"))+ theme(axis.text.x = element_text(angle = 30, hjust = 1))+theme(plot.title = element_text(face = "bold"))
+  geom_bar(data=epic_models, aes(x=Prediction_Desc ,y=prop, fill= factor(age_bins)),colour = "black", stat="identity", position = "dodge")+facet_grid(~developed_AML)+
+  geom_errorbar(data = epic_models, aes(x = Prediction_Desc, ymin = prop-se, ymax = prop + se, group = factor(age_bins)), position = "dodge", width=0.91)+
+  ylab("Proportion of Participants")+xlab("Evolutionary Class")+ggtitle("")+theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica"))+ theme(axis.text.x = element_text(angle = 30, hjust = 1))+theme(plot.title = element_text(face = "bold"))
 fig2b
 
-#Proportion of individuals rejecting neutrality 
-prop.neut <- class.m.se
-prop.neut <- plyr::count(prop.neut, c("developed_AML", "Desc"))
-prop.neut$Desc <- ifelse(prop.neut$Desc=="Neutral", "Neutral", "Other")
-res <- prop.test(x = c(246, 73), n = c(385, 92))
-res 
+
+#maybe loop through this to do the test
+sigTests = epic_models
+sigTests = na.omit(sigTests)
+sigTests$group = paste(sigTests$age_bins, sigTests$Prediction_Desc, sep = "_")
+sigTests = sigTests %>% add_count(group)
+sigTests = sigTests[sigTests$n==2,]
+groups = unique(sigTests$group)
+results = data.frame(group = as.character(), X2 = as.integer(), p = as.integer())
+for (i in 1:length(groups)){
+  group = groups[i]
+  test = sigTests[sigTests$group==group,]
+  count_case = test$Freq[test$developed_AML=="PreLeukemia"]
+  count_control = test$Freq[test$developed_AML=="Control"]
+  total_case = test$Total[test$developed_AML=="PreLeukemia"]
+  total_control = test$Total[test$developed_AML=="Control"]
+  res = prop.test(x = c(count_control, count_case), n = c(total_control, total_case))
+  results_temp = data.frame(group = group, X2=res$statistic, p = res$p.value)
+  results = rbind(results, results_temp)
+}
+results = results[results$p<0.05,]
 
 ####Figure 2c: Range of mutation rate estimations across cohort of participants
 ave.mutrates = aggregate(value~Sample, mut.rates, mean)
@@ -226,11 +254,14 @@ ave.mutrates$variable = "Mean"
 ave.mutrates = ave.mutrates[,c(1,3,2)]
 mut.rates.ave = rbind(mut.rates, ave.mutrates)
 mut.rates.ave$grp = ifelse(mut.rates.ave$variable=="Mean", "Mean Estimate", "Single Estimate")
+mut.rates.ave$grp = as.factor(mut.rates.ave$grp)
+mut.rates.ave$grp <- factor(mut.rates.ave$grp, levels = c("Mean Estimate", "Single Estimate"))
 fig2c =   ggplot(mut.rates.ave, aes(reorder(Sample, -value), value, group = variable, colour = grp))+geom_line()+scale_color_manual(name = "", values = c("red", "lightgrey"))+theme_pubr()+
-          theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica Light"), legend.position = "top")+ggtitle("")+
-          theme(plot.title = element_text(face = "bold"))+xlab("Sample")+ylab("Predicted Mutation Rate (log10)")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+
-          theme(axis.text.x=element_blank())+  theme(plot.title = element_text(hjust = 0), text = element_text(size = 14, family = "Helvetica"))
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica Light"), legend.position = "top")+ggtitle("")+
+  theme(plot.title = element_text(face = "bold"))+xlab("Sample")+ylab("Predicted Mutation Rate (log10)")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  theme(axis.text.x=element_blank())+  theme(plot.title = element_text(hjust = 0), text = element_text(size = 14, family = "Helvetica"))
 fig2c
+
 
 ####Figure 2d: Preleukemic blood populations have a higher mutation rate than healthy controls. 
 mr = join(mut.rates, class.m.se)
@@ -239,37 +270,43 @@ mut.rates.10k =  mr %>% dplyr::group_by(Sample,age_bins, developed_AML) %>% dply
 wilcox.test(avg~developed_AML, mut.rates.10k)
 my_comparisons <- list(c("Control", "PreLeukemia"))
 fig2d =   ggplot(data = mut.rates.10k, aes(developed_AML,  avg, fill = developed_AML))+geom_boxplot()+theme_pubclean()+scale_fill_manual(name = "Group", values = c("darkblue", "red"))+
-          stat_compare_means(comparisons = my_comparisons, label = "p.signif",method = "wilcox.test", hjust = -3)+ 
-          theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica"), legend.position = "top")+ggtitle("")+
-          theme(plot.title = element_text(face = "bold"))+xlab("")+ylab("Mutation Rate (log10)")+
-          theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica"))
+  stat_compare_means(comparisons = my_comparisons, label = "p.signif",method = "wilcox.test", hjust = -3)+ 
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica"), legend.position = "top")+ggtitle("")+
+  theme(plot.title = element_text(face = "bold"))+xlab("")+ylab("Mutation Rate (log10)")+
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica"))
 fig2d
+
 
 #Supplementary Figure 9. Mutation rate predictions across ensemble of DNNs. 
 mr.e = expand.grid(unique(mut.rates.10k$Sample), unique(mut.rates.10k$age_bins))
 colnames(mr.e) = c("Sample", "age_bins")
 mr.ext = merge(mut.rates.10k,mr.e, all =T)
+every_nth = function(n) {
+  return(function(x) {x[c(TRUE, rep(FALSE, n - 1))]})
+}
 supp9 <-  ggplot(data = mr, aes(reorder(Sample, value), variable, fill = value))+geom_raster(interpolate = T)+
-          scale_fill_gradient2(name = "Mutation Rate \n(log10)", low = "black", mid = "darkblue", high= "red", midpoint = -11)+theme_pubr()+
-          theme(axis.text.y = element_blank(),axis.text.x=element_blank())+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica"), legend.position = "right")+ggtitle("")+
-          theme(plot.title = element_text(face = "bold"))+xlab("Sample")+ylab("Ensemble Prediction")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+
-          theme(axis.text.x=element_blank())+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica"))
+  scale_fill_gradient2(name = "Mutation Rate \n(log10)", low = "black", mid = "darkblue", high= "red", midpoint = -11)+theme_pubr()+
+  theme(axis.text.y = element_blank(),axis.text.x=element_blank())+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica"), legend.position = "right")+ggtitle("")+
+  theme(plot.title = element_text(face = "bold"))+xlab("Sample")+ylab("Ensemble Prediction")+ theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 10))+
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica"))+ scale_x_discrete(breaks = every_nth(n = 10))
 supp9
+
 
 #Supplementary Figure 10. Impact of population size on mutation rate. 
 mut.rates.all$N = as.factor(mut.rates.all$N)
 supp10 =   ggplot(mut.rates.all, aes(x=reorder(Sample, -avg), y=avg, colour = N)) + scale_color_manual(name= "Population Size (N)", values = c("purple", "blue", "darkblue", "black"))+
-          theme_pubr()+geom_errorbar(aes(ymin=avg-sd, ymax=avg+sd, group = N), width=2, colour = "grey")+ geom_line(aes(group = N), size = 1)+ 
-          theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica Light"), legend.position = "right")+ggtitle("")+
-          theme(plot.title = element_text(face = "bold"))+xlab("Sample")+ylab("Predicted Mutation Rate (log10)")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+
-          theme(axis.text.x=element_blank())+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica"))
+  theme_pubr()+geom_errorbar(aes(ymin=avg-sd, ymax=avg+sd, group = N), width=2, colour = "grey")+ geom_line(aes(group = N), size = 1)+ 
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica Light"), legend.position = "right")+ggtitle("")+
+  theme(plot.title = element_text(face = "bold"))+xlab("Sample")+ylab("Predicted Mutation Rate (log10)")+ theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  theme(axis.text.x=element_blank())+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica"))
 supp10
 
 #Supplementary Figure 8. Distribution of mutation rate predictions for simulated data. 
 supp8 =   ggplot(data = mutPreds_Sims,aes(Pred))+theme_pubr()+geom_density(fill = "lightblue", colour = "darkblue")+facet_wrap(~True)+
-          geom_vline(data = mutPreds_Sims, aes(xintercept = True), colour ="red", linetype = "dashed")+ theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica "), legend.position = "right")+ggtitle("")+
-          theme(plot.title = element_text(face = "bold"))+xlab("Predicted Mutation Rate")+ylab("")+theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica"))
+  geom_vline(data = mutPreds_Sims, aes(xintercept = True), colour ="red", linetype = "dashed")+ theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica "), legend.position = "right")+ggtitle("")+
+  theme(plot.title = element_text(face = "bold"))+xlab("Predicted Mutation Rate")+ylab("")+theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 14, family = "Helvetica"))
 supp8
+
 
 #Supplementary Figure 7. Mutational burden across evolutionary classes.
 class.m.se$nbPassenger <- as.numeric(as.character(class.m.se$numSNPs))-as.numeric(as.character(class.m.se$nbBen))
@@ -277,19 +314,42 @@ meansSNPs <- class.m.se[,c(1,23,25)]
 meansSNPs$nbBen = as.numeric(meansSNPs$nbBen)
 meansSNPs$nbPassenger = as.numeric(meansSNPs$nbPassenger)
 meansSNPs.m <- reshape2::melt(meansSNPs, id.vars="Sample")
-fits <- mutBurden[,c(1,5,6)]
+fits <- unique(class.m.se[,c(1,5,6)])
 meansSNPs.m <- join(meansSNPs.m, fits)
+
+#calculate p values for figure 
+tests = meansSNPs.m
+tests$variable <- ifelse(tests$variable=="nbBen", "Drivers", "Passengers")
+tests$grp = paste(tests$variable, tests$Desc, sep = "_")
+groups = unique(tests$grp)
+results = data.frame(group = as.character(), W = as.integer(), p = as.integer())
+for (i in 1:length(groups)){
+  group = groups[i]
+  test = tests[tests$grp==group,]
+  res = wilcox.test(value ~ developed_AML, data = test,exact = FALSE)
+  results_temp = data.frame(group = group, W=res$statistic, p = res$p.value)
+  results = rbind(results, results_temp)
+}
+results = results[c(1,6,8),]
+results$variable = str_split_fixed(results$group, "_", 2)[,1]
+results$Desc = str_split_fixed(results$group, "_", 2)[,2]
+results$label = c("***", "**", "**")
+results$x = c(1,3,4)
+results$y = c(4.5, 8.5, 4.5)
+
 wilcox.test(nbBen ~ developed_AML, data = class.m.se,exact = FALSE)
 meansSNPs.m  <- meansSNPs.m %>% dplyr::group_by(variable, Desc, developed_AML) %>% dplyr::summarise(avg = mean(value), sd = serr(value))
-meansSNPs.m$variable <- ifelse(meansSNPs.m $variable=="nbBen", "Drivers", "Passengers")
+meansSNPs.m$variable <- ifelse(meansSNPs.m$variable=="nbBen", "Drivers", "Passengers")
+meansSNPs.m = as.data.frame(plyr::join(meansSNPs.m, results))
 supp7 <-  ggplot(meansSNPs.m, aes(x=Desc, y=avg, group=developed_AML)) + theme_pubr()+scale_colour_manual(values = c("Blue", "Red"))+
-          geom_errorbar(aes(ymin=avg-sd, ymax=avg+sd), width=.3, position=position_dodge(0.5), colour = "black")+
-          geom_point(data = meansSNPs.m, aes(colour = developed_AML), size = 3, position = position_dodge((0.5)))+
-          xlab("Evolutionary Class")+ylab("Mean Mutation Count")+facet_wrap(~variable)+theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"))+ theme(axis.text.x = element_text(angle = 30, hjust = 1))+
-          theme(legend.title=element_blank())+ggtitle("Mutational Burden across Evolutionary Classes")+theme(plot.title = element_text(face = "bold"))
+  geom_errorbar(aes(ymin=avg-sd, ymax=avg+sd), width=.3, position=position_dodge(0.5), colour = "black")+
+  geom_point(data = meansSNPs.m, aes(colour = developed_AML), size = 3, position = position_dodge((0.5)))+
+  xlab("Evolutionary Class")+ylab("Mean Mutation Count")+facet_wrap(~variable, scales = "free_x")+theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"))+ theme(axis.text.x = element_text(angle = 30, hjust = 1))+
+  theme(legend.title=element_blank())+ggtitle("")+theme(plot.title = element_text(face = "bold"))+
+  geom_text(data= meansSNPs.m,mapping = aes(x = x, y = y, label = label))
 supp7 
 
-#comparisons for p values that are shown in the paper 
+#comparisons for p values that are shown in the paper for Figure 3A
 epicCohort.neut = epicCohort[epicCohort$Desc=="Neutral",]
 wilcox.test(CADD ~ Driver, data = epicCohort.neut, exact = FALSE)
 epicCohort.pos = epicCohort[epicCohort$Desc=="Positive",]
@@ -306,11 +366,18 @@ means.CADD.dp <- cbind(means.CADD.dp, means.CADD.dp$CADD)
 colnames(means.CADD.dp) <- c("Desc", "Type", "CADD", "mean", "se")
 means.CADD.dp$Type = ifelse(means.CADD.dp$Type=="Driver", "AML Driver", "Non-Driver")
 means.CADD.dp$Desc <- factor(means.CADD.dp$Desc, levels=c("Neutral", "Negative", "Combination", "Positive"))
+means.CADD.dp = data.frame(means.CADD.dp)
 fig3a = ggplot(means.CADD.dp, aes(x = Desc, y = mean, colour = Type))+theme_pubr()+scale_colour_manual(values = c("darkgreen", "Red", "Blue"))+
-        geom_errorbar(aes(ymin=mean-se, ymax=mean+se,fill=Type), width=.2, position = position_dodge(.4), colour = "black")+
-        geom_point(size = 3, position = position_dodge(.4))+theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 16, family = "Helvetica"))+
-        ggtitle("")+theme(plot.title = element_text(face = "bold"))+xlab("")+ylab("CADD Score")+ylim(12,28)+ theme(axis.text.x = element_text(angle = 30, hjust = 1))+
-        theme(plot.title = element_text(face = "bold"))
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se,fill=Type), width=.2, position = position_dodge(.4), colour = "black")+
+  geom_point(size = 3, position = position_dodge(.4))+theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 11, family = "Helvetica"))+
+  ggtitle("")+theme(plot.title = element_text(face = "bold"))+xlab("")+ylab("CADD Score")+ylim(12,28)+ theme(axis.text.x = element_text(angle = 30, hjust = 1))+
+  theme(plot.title = element_text(face = "bold"))+
+  annotate("text", x = 4, y = 28, label = "***") +
+  annotate("text", x = 3, y = 28, label = "***")+
+  annotate("text", x = 1.6, y = 20.1, label = "**")+
+  annotate("segment", x=c(3.8,3.8,4.2),xend=c(3.8,4.2,4.2), y= c(27.5,27.8,27.8), yend=c(27.8,27.8,27.5))+
+  annotate("segment", x=c(2.8,2.8,3.2),xend=c(2.8,3.2,3.2), y= c(27.5,27.8,27.8), yend=c(27.8,27.8,27.5))+
+  annotate("segment", x=c(1.1,1.1,2.1),xend=c(1.1,2.1,2.1), y= c(19.5,20,20), yend=c(20,20,19.5))
 fig3a
 
 #Figure 3b: Distribution of function-altering mutations in genes across evolutionary classes. 
@@ -322,16 +389,16 @@ input = reshape(epicCohort.counts, idvar = "GeneName", timevar = "Desc",directio
 colnames(input) = c("Gene", "Neutral", "Combination", "Negative", "Positive")
 input[is.na(input)] <- 0
 fig3b <-  upset(input, matrix.color = "black",main.bar.color = "black", point.size = 3.5, line.size = 1, empty.intersections = "on", order.by = "freq",
-          mainbar.y.label = "Number of Genes", sets.bar.color = c("orange", "lightblue", "darkred", "darkgreen"), sets.x.label = "Genes per Class", 
-          text.scale = c(2, 2, 1.5, 2, 1.5, 2))
+                mainbar.y.label = "Number of Genes", sets.bar.color = c("orange", "lightblue", "darkred", "darkgreen"), sets.x.label = "Genes per Class", 
+                text.scale = c(2, 2, 1.5, 2, 1.5, 2))
 fig3b
 
 #Figure 2e: Relative passenger to driver mutation proportion across evolutionary classes. 
 dpMutationComparison = class.m.se[class.m.se$Desc!="Neutral" & class.m.se$Desc!="Negative",c(1,6,5,23,25)]
 fig2e <-  ggplot(data = dpMutationComparison, aes(x=(nbBen), y = (nbPassenger), colour = developed_AML))+geom_point()+
-          geom_smooth(method="lm")+theme_pubr()+scale_color_manual(name = "Group", values = c("blue", "red"))+
-          theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica"))+ggtitle("")+
-          theme(plot.title = element_text(face = "bold"))+xlab("Mutations in AML Drivers")+ylab("Mutations in non driver genes")+facet_wrap(~Desc,1)
+  geom_smooth(method="lm")+theme_pubr()+scale_color_manual(name = "Group", values = c("blue", "red"))+
+  theme(plot.title = element_text(hjust = 0.5), text = element_text(size = 12, family = "Helvetica"))+ggtitle("")+
+  theme(plot.title = element_text(face = "bold"))+xlab("Mutations in AML Drivers")+ylab("Mutations in non driver genes")+facet_wrap(~Desc,1)
 fig2e
 
 #Regression Equations 
@@ -371,11 +438,12 @@ colnames(dominantVAF.e) = c("Desc", "cadd_bins")
 dominantVAF = merge(dominantVAF, dominantVAF.e, all = T)
 dominantVAF$Collapsed.Freq[is.na(dominantVAF$Collapsed.Freq)]=0
 fig3c = ggplot(na.omit(dominantVAF), aes(cadd_bins, Collapsed.Freq, fill=interaction(Desc), dodge=cadd_bins)) +stat_boxplot(geom ='errorbar')+
-        geom_boxplot()+theme_pubr()+ scale_fill_manual(name = "", values=c("lightblue","red",  "orange",  "darkgreen"))+
-        theme(plot.title = element_text(hjust = 0.5, face = "bold"), text = element_text(size = 13, family = "Helvetica"))+
-        theme(strip.text = element_text(colour = 'black', face = "bold"))+xlab("Inferred Pathogenicity of Dominant Clone")+ 
-        ylab("Variant Allele Frequency")+ggtitle("")+facet_wrap(~Desc,2)+theme(axis.text.x = element_text(angle = 30, hjust = 1))
+  geom_boxplot()+theme_pubr()+ scale_fill_manual(name = "", values=c("lightblue","red",  "orange",  "darkgreen"))+
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"), text = element_text(size = 11, family = "Helvetica"))+
+  theme(strip.text = element_text(colour = 'black', face = "bold"))+xlab("Inferred Pathogenicity of Dominant Clone")+ 
+  ylab("Variant Allele Frequency")+ggtitle("")+facet_wrap(~Desc,2)+theme(axis.text.x = element_text(angle = 30, hjust = 1))
 fig3c
+
 
 #Figure 3D: Impact of Negative Selection on Clonal Expansions. 
 epicCohort$vaf.bins <- cut(epicCohort$Collapsed.Freq, breaks=c(0, 0.1, 0.2, 0.3, 0.4, 0.5), labels=c( ">0.1", "0.2", "0.3", "0.4", ">0.5"))
@@ -387,15 +455,16 @@ my_comparisons <- list(c("Combination_Control", "Positive_Control"),c("Combinati
                        c("Combination_PreLeukemia", "Positive_PreLeukemia"), c("Positive_Control", "Positive_PreLeukemia"))
 compare_means(Collapsed.Freq~Grp, to_compare, method = "wilcox.test")
 fig3d =   ggboxplot(to_compare, x="Grp", y="Collapsed.Freq", fill = "Grp")+ theme_pubr()+scale_fill_manual(name = "Desc", values = c("darkorange", "#ffc966", "darkgreen", "#90ee90"))+
-          stat_compare_means(comparisons=my_comparisons, method = "wilcox.test", aes(label=..p.signif.., font.label = "bold"), size = 4)+
-          theme(plot.title = element_text(hjust = 0.5, face = "bold"), text = element_text(size = 12, family = "Helvetica"))+
-          theme(strip.text = element_text(colour = 'black', face = "bold"))+xlab("")+ ylab("Variant Allele Frequency (log10)")+ggtitle("")+theme(axis.text.x = element_text(angle = 30, hjust = 1))+
-          scale_x_discrete(labels= c("Combination (C)", "Combination (PL)", "Positive (C)", "Positive (PL)"))+theme(legend.position = "none") +ggtitle("")
+  stat_compare_means(comparisons=my_comparisons, method = "wilcox.test", aes(label=..p.signif.., font.label = "bold"), size = 4)+
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"), text = element_text(size = 11, family = "Helvetica"))+
+  theme(strip.text = element_text(colour = 'black', face = "bold"))+xlab("")+ ylab("Variant Allele Frequency (log10)")+ggtitle("")+theme(axis.text.x = element_text(angle = 30, hjust = 1))+
+  scale_x_discrete(labels= c("Combination (C)", "Combination (PL)", "Positive (C)", "Positive (PL)"))+theme(legend.position = "none") +ggtitle("")
 fig3d
+
 
 #p values for comparisons in the figure 
 comb.compare = to_compare[to_compare$Desc =="Combination",]
-wilcox.test(Collapsed.Freq~developed_AML, comb.compare)
+wilcox.test(Collapsed.Freq~developed_AML, comb.compare, correct = FALSE)
 pos.compare = to_compare[to_compare$Desc =="Positive",]
 wilcox.test(Collapsed.Freq~developed_AML, pos.compare)
 cont.compare = to_compare[to_compare$Desc =="Positive" | to_compare$Desc =="Combination",]
@@ -410,10 +479,11 @@ genes.prop <- join(genes, genes.total)
 genes.prop$prop <- genes.prop$freq/genes.prop$Total
 genes.driver = genes.prop[genes.prop$Driver == "Driver",]
 supp11 =  ggplot(data = genes.driver, aes(reorder(GeneName, -prop), prop, fill = Desc))+geom_bar(position = "stack", stat = "identity")+theme_pubr()+
-          scale_fill_manual(name = "Class", values = c("orange", "lightblue", "darkgreen"))+theme(plot.title = element_text(hjust = 0.5, face = "bold"), text = element_text(size = 14, family = "Helvetica"))+
-          theme(strip.text = element_text(colour = 'black', face = "bold"))+xlab("Gene")+ ylab("Proportion")+ggtitle("")+
-          theme(axis.text.x = element_text(angle = 90))+facet_wrap(~developed_AML,2)
+  scale_fill_manual(name = "Class", values = c("orange", "lightblue", "darkgreen"))+theme(plot.title = element_text(hjust = 0.5, face = "bold"), text = element_text(size = 14, family = "Helvetica"))+
+  theme(strip.text = element_text(colour = 'black', face = "bold"))+xlab("Gene")+ ylab("Proportion")+ggtitle("")+
+  theme(axis.text.x = element_text(face = "italic", angle = 90))+facet_wrap(~developed_AML,2)
 supp11
+
 
 #Figure 4: Survival analyses 
 km.epic = unique(epicCohort[,c(6,7,10,11,5)])
@@ -422,15 +492,11 @@ km.epic$Desc = relevel(km.epic$Desc, ref = "Neutral")
 surv_object <- Surv(time = km.epic$followup_length_in_days, event = km.epic$fustat)
 fit1 <- survfit(surv_object ~ Desc, data = km.epic)
 fig4a =   ggsurvplot(fit1, data = km.epic, pval = F, palette = c("lightblue", "orange", "darkred", "darkgreen"), 
-          legend.title="", font.legend = list(size = 12, color = "black"))+xlab("Time to Event (days)")+
-          ylab("AML-free fraction")+guides(colour = guide_legend(nrow = 2))
+                     legend.title="", font.legend = list(size = 12, color = "black"))+xlab("Time to Event (days)")+
+  ylab("AML-free fraction")+guides(colour = guide_legend(nrow = 2))
 fig4a
 fit2 =    coxph(surv_object ~ Desc, data = km.epic)
 summary(fit2)
 fig4b =   forest_model(fit2)
 figure4 = ggarrange(fig4a$plot,fig4b, nrow = 1, widths  = c(0.4,0.6))
 figure4
-
-
-
-
